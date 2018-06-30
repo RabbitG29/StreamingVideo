@@ -1,0 +1,76 @@
+<html>
+    <head>
+        <title>비디오 스트리밍 테스트</title>
+        <link href="https://vjs.zencdn.net/7.0.3/video-js.css" rel="stylesheet">
+    </head>
+    <body>
+        <h1>동영상 테스트</h1>
+        <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+        <video id="player" class="video-js" width="100%" height="auto" controls></video>
+        <script src="https://vjs.zencdn.net/7.0.3/video.js"></script>
+    <script type="text/javascript">
+    var video = document.getElementById("player");
+
+    // HLS 지원 여부 검사
+    if(Hls.isSupported()) {
+        var hls = new Hls();
+        hls.attachMedia(video);
+        // midea가 인식되면
+        hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+            // 영상을 load
+            hls.loadSource("http://220.230.125.170:4100/<%= video_url_without_extension %>_playlist.m3u8");
+            console.log(hls);
+            console.log(hls.subtitleTracks);
+            // 영상이 load되면
+            hls.on(Hls.Events.MANIFEST_PARSED,function() {
+                video.play();
+            });
+        });
+        
+        // Error Handling
+        // 참고: https://github.com/video-dev/hls.js/blob/master/docs/API.md#errors
+        hls.on(Hls.Events.ERROR, function (event, data) {
+            var errorType = data.type;
+            var errorDetails = data.details;
+            var errorFatal = data.fatal;
+
+            console.log("Error: " + errorType + ", " + errorDetails + ", " + errorFatal);
+            if (data.fatal) {
+                switch(data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        // try to recover network error
+                        console.log("fatal network error encountered, try to recover");
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log("fatal media error encountered, try to recover");
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        // cannot recover
+                        hls.destroy();
+                    break;
+                }
+            }
+        });
+    }
+    // HLS 지원하지 않을 경우 그냥 mp4으로 재생
+    else {
+        var source = document.createElement('source');
+        source.src = "<%= video_url_without_extension %>.mp4";
+        source.type = 'video/mp4';
+        video.appendChild(source);
+
+        // 자막이 있을 경우 추가
+        if("<%= subtitle_without_extension %>" != "None") {
+            var track = document.createElement('track');
+            track.src = "<%= subtitle_without_extension %>.vtt";
+            track.kind = "subtitles";
+            track.srclang = "kr";
+            track.label = "한국어";
+            video.appendChild(track);
+        }
+    }
+    </script>
+    </body>
+</html>
